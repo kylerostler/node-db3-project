@@ -1,4 +1,4 @@
-const db = require('../../db-config')
+const db = require('../../data/db-config')
 
 function find() { // EXERCISE A
   /*
@@ -25,7 +25,27 @@ function find() { // EXERCISE A
   .count('st.step_id as number_of_steps')
 }
 
-function findById(scheme_id) { // EXERCISE B
+async function findById(scheme_id) { // EXERCISE B
+  const schemes = await db('schemes')
+  .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
+  .orderBy('st.step_number ASC')
+  .select('sc.scheme_name', 'st.*')
+  .where({ scheme_id })
+  
+  if(schemes.length === 0) {
+    return null
+  }
+
+  const result = {
+    scheme_id: schemes[0].scheme_id,
+    scheme_name: schemes[0].scheme_name,
+    steps: schemes.filter(elem => elem.scheme_id != null)
+    .map(elem => ({ step_id: elem.step_id,
+                    step_number: elem.step_number,
+                    instructions: elem.instructions}))
+  }
+
+  return result
   /*
     1B- Study the SQL query below running it in SQLite Studio against `data/schemes.db3`:
 

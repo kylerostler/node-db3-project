@@ -1,4 +1,4 @@
-const Scheme = require('./scheme-model')
+const db = require('../../data/db-config')
 /*
   If `scheme_id` does not exist in the database:
 
@@ -9,14 +9,19 @@ const Scheme = require('./scheme-model')
 */
 const checkSchemeId = async (req, res, next) => {
   try {
-    const scheme = await Scheme.findById(req.params.id)
-    if(!scheme) {
-      next({ status: 404, message: `scheme with scheme_id ${scheme.scheme_id} not found`})
-    } else {
-      req.scheme = scheme
+    const existing = await db('schemes')
+    .where('scheme_id', req.params.scheme_id)
+    .first()
+
+    if(!existing) {
+      next({ 
+        status: 404,
+      message: `scheme with scheme_id ${req.params.scheme_id} not found`
+    })
+    } else{
       next()
     }
-  } catch (err) {
+  } catch(err) {
     next(err)
   }
 }
@@ -30,11 +35,13 @@ const checkSchemeId = async (req, res, next) => {
   }
 */
 const validateScheme = (req, res, next) => {
-  if (!req.body.scheme_name || req.body.scheme_name === undefined || req.body.scheme_name != typeof(String)) {
-    return next({
-      status: 400,
-      message: 'invalid scheme_name'
-    })
+  const { scheme_name } = req.body
+  if (
+    scheme_name === undefined ||
+    typeof scheme_name !== 'string' ||
+    !scheme_name.trim()
+  ) {
+    next({ status: 400, message: 'invalid scheme_name'})
   } else {
     next()
   }
@@ -50,15 +57,14 @@ const validateScheme = (req, res, next) => {
   }
 */
 const validateStep = (req, res, next) => {
- if (!req.body.instructions || 
-  req.body.instructions === undefined || 
-  req.body.instructions != typeof(String) ||
-  req.body.step_number != typeof(Number)||
-  req.body.step_number < 1) {
-    return next({ 
-      status: 400,
-      message: 'invalid step'
-    })
+ const { instructions, step_number } = req.body
+
+ if(instructions === undefined ||
+  typeof instructions !== 'string' ||
+  !instructions.trim() ||
+  typeof step_number !== 'number' ||
+  step_number < 1) {
+    next({ status: 400, message: 'invalid step'})
   } else {
     next()
   }
