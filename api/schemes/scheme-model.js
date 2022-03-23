@@ -19,31 +19,35 @@ function find() { // EXERCISE A
   */
   return db('schemes as sc')
   .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
-  .groupBy('sc.scheme_id')
-  .orderBy('sc.scheme_id ASC')
   .select('sc.*')
   .count('st.step_id as number_of_steps')
+  .groupBy('sc.scheme_id')
+  .orderBy('sc.scheme_id ASC')
 }
 
 async function findById(scheme_id) { // EXERCISE B
-  const schemes = await db('schemes')
+  const schemes = await db('schemes as sc')
   .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
+  .where('sc.scheme_id', scheme_id)
+  .select('sc.scheme_name', 'st.*', 'sc.scheme_id')
   .orderBy('st.step_number ASC')
-  .select('sc.scheme_name', 'st.*')
-  .where({ scheme_id })
-  
-  if(schemes.length === 0) {
-    return null
-  }
+
 
   const result = {
     scheme_id: schemes[0].scheme_id,
     scheme_name: schemes[0].scheme_name,
-    steps: schemes.filter(elem => elem.scheme_id != null)
-    .map(elem => ({ step_id: elem.step_id,
-                    step_number: elem.step_number,
-                    instructions: elem.instructions}))
+    steps: []
   }
+
+  schemes.forEach(row => {
+    if (row.step_id) {
+      result.steps.push({
+        step_id: row.step_id,
+        step_number: row.step_number,
+        instructions: row.instructions
+      })
+    }
+  })
 
   return result
   /*
@@ -113,7 +117,7 @@ async function findById(scheme_id) { // EXERCISE B
   */
 }
 
-function findSteps(scheme_id) { // EXERCISE C
+async function findSteps(scheme_id) { // EXERCISE C
   /*
     1C- Build a query in Knex that returns the following data.
     The steps should be sorted by step_number, and the array
@@ -134,12 +138,24 @@ function findSteps(scheme_id) { // EXERCISE C
         }
       ]
   */
+ const rows = await db('schemes as sc')
+ .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
+ .select('st.step_id', 'st.step_number', 'instructions', 'sc.scheme_name')
+ .where('sc.scheme_id', scheme_id)
+ .orderBy('step_number')
+
+ if(!rows[0].step_id) return [];
+ return rows
 }
 
 function add(scheme) { // EXERCISE D
   /*
     1D- This function creates a new scheme and resolves to _the newly created scheme_.
   */
+ return db('schemes').insert(scheme)
+ .then(([scheme_id]) => {
+   return db('schemes').where('scheme_id', scheme_id).first()
+ })
 }
 
 function addStep(scheme_id, step) { // EXERCISE E
@@ -148,6 +164,13 @@ function addStep(scheme_id, step) { // EXERCISE E
     and resolves to _all the steps_ belonging to the given `scheme_id`,
     including the newly created one.
   */
+ return db('steps').insert({
+   ...step,
+   scheme_id
+ })
+ .then(() => {
+   return db('steps').where('scheme_id', scheme_id)
+ })
 }
 
 module.exports = {
